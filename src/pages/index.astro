@@ -1,0 +1,75 @@
+---
+const categories = [
+  ['all', 'Tudo'], ['portugal', 'Portugal'], ['technology', 'Tecnologia'],
+  ['design', 'Design'], ['creative-coding', 'Creative Coding'], ['culture', 'Cultura'],
+  ['world', 'Mundo'], ['brazil', 'Brasil'], ['business', 'Negócios']
+];
+---
+<html lang="pt">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#F6F5F1" />
+    <title>Personal News — Descobrir</title>
+    <style>
+      :root { color-scheme: light; font-family: system-ui, -apple-system, sans-serif; background: #F6F5F1; color: #202020; }
+      * { box-sizing: border-box; }
+      body { margin: 0; }
+      main { max-width: 1050px; padding: 28px 22px 80px; margin: auto; }
+      header { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid #c7c9c1; padding-bottom: 22px; }
+      h1 { font-family: Georgia, serif; font-size: clamp(2.3rem, 6vw, 4.6rem); letter-spacing: -.05em; margin: 32px 0 12px; }
+      p { line-height: 1.6; }
+      .muted, time, .meta { color: #52645A; }
+      nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 28px 0; }
+      button { font: inherit; cursor: pointer; border: 1px solid #c7c9c1; background: transparent; color: inherit; padding: 8px 12px; border-radius: 99px; }
+      button[aria-pressed="true"] { background: #52645A; color: white; border-color: #52645A; }
+      article { padding: 24px 0; border-top: 1px solid #d8d9d2; }
+      article h2 { font-family: Georgia, serif; font-weight: normal; font-size: clamp(1.4rem, 3vw, 2rem); line-height: 1.2; margin: 10px 0; }
+      a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+      .meta { font-size: .83rem; }
+      #status { margin: 25px 0; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header><strong>PERSONAL NEWS</strong><span class="muted">Descobrir · MVP</span></header>
+      <h1>Ideias para explorar.</h1>
+      <p class="muted">Notícias, design e creative coding. Seleção de fontes públicas, com ligação à publicação original.</p>
+      <nav aria-label="Filtrar notícias">
+        {categories.map(([id, label]) => <button type="button" data-category={id} aria-pressed={id === 'all'}>{label}</button>)}
+      </nav>
+      <p id="status" role="status">A carregar notícias…</p>
+      <section id="articles" aria-label="Notícias"></section>
+    </main>
+    <script>
+      type Item = { title: string; url: string; sourceName: string; publishedAt: string | null; description: string; categories: string[] };
+      let items: Item[] = [];
+      let active = 'all';
+      const list = document.querySelector<HTMLElement>('#articles')!;
+      const status = document.querySelector<HTMLElement>('#status')!;
+      function render() {
+        list.replaceChildren();
+        const selected = items.filter(item => active === 'all' || item.categories.includes(active));
+        status.textContent = selected.length ? `${selected.length} artigos` : 'Ainda não há artigos nesta categoria. Executa npm run fetch para atualizar o catálogo.';
+        for (const item of selected) {
+          const article = document.createElement('article');
+          const meta = document.createElement('div'); meta.className = 'meta';
+          meta.textContent = item.sourceName + (item.publishedAt ? ' · ' + new Date(item.publishedAt).toLocaleDateString('pt-PT') : '');
+          const h2 = document.createElement('h2');
+          const link = document.createElement('a'); link.href = item.url; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = item.title;
+          h2.append(link); article.append(meta, h2);
+          if (item.description) { const p = document.createElement('p'); p.textContent = item.description; article.append(p); }
+          list.append(article);
+        }
+      }
+      document.querySelectorAll<HTMLButtonElement>('[data-category]').forEach(button => button.addEventListener('click', () => {
+        active = button.dataset.category ?? 'all';
+        document.querySelectorAll<HTMLButtonElement>('[data-category]').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+        render();
+      }));
+      fetch('/data/articles.json').then(r => { if (!r.ok) throw new Error('Catálogo indisponível'); return r.json(); })
+        .then(data => { items = Array.isArray(data.articles) ? data.articles : []; render(); })
+        .catch(() => { status.textContent = 'Não foi possível carregar o catálogo.'; });
+    </script>
+  </body>
+</html>
